@@ -1,43 +1,36 @@
 package org.destro.birt.datasource.json;
 
-import java.sql.Timestamp;
-
 public class SonarQubeMessageVO {
 
-	private String type;
+	private String project;
 
-	private String user;
+	private int issues;
+	
 
-	private String text;
-
-	private Timestamp ts;
-
-	public SonarQubeMessageVO(String type, String user, String text, Timestamp ts) {
+	public SonarQubeMessageVO(String project, int issues) {
 		super();
-		this.type = type;
-		this.user = user;
-		this.text = text;
-		this.ts = ts;
+		this.project = project;
+		this.issues = issues;
 	}
 
-	public String getType() {
-		return type;
+	public String getProject() {
+		return project;
 	}
 
-	public String getUser() {
-		return user;
+	public void setProject(String project) {
+		this.project = project;
 	}
 
-	public String getText() {
-		return text;
+	public int getIssues() {
+		return issues;
 	}
 
-	public Timestamp getTs() {
-		return ts;
+	public void setIssues(int issues) {
+		this.issues = issues;
 	}
 
 	@Override
 	public String toString() {
-		return "SlackMessageVO [type=" + type + ", user=" + user + ", text=" + text + ", ts=" + ts + "]";
+		return "SonarQubeMessageVO [project=" + project + ", issues=" + issues + "]";
 	}
 }

@@ -3,34 +3,58 @@ package org.destro.birt.datasource.json;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.URL;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * DataSet responsável em buscar mensagens de um canal no slack e tranforma-los em VO para consumo como um POJO no Eclipse BIRT
+ * DataSet respons�vel em buscar dados do SonarQube e tranforma-los em VO para
+ * consumo como um POJO no Eclipse BIRT
  * 
  * @author destro
  */
 public class SonarQubeMessagesDataSet {
 
-	private static final String jsonUrl = "https://slack.com/api/channels.history";
+	private static final String JSON_URL = "http://ci.buscapecompany.com/sonarqube/api/issues/search?";
+
+	private static final String PROJECT_KEYS = "projectKeys";
+
+	private static final String SEVERITIES = "severities";
+	
 
 	private Iterator<?> iterator;
 
-	public List<SonarQubeMessageVO> getMessages(String token, String channel, int count, long days) throws Exception {
+	public List<SonarQubeMessageVO> getMessages(String projectList, String severities) throws Exception {
 
 		List<SonarQubeMessageVO> list = new ArrayList<>();
 
-		long beginDate = (System.currentTimeMillis() - days * 24L * 60L * 60L * 1000L) / 1000L;
+		String[] projects = projectList.split(",");
 
-		URL url = new URL(
-				jsonUrl + "&token=" + token + "&channel=" + channel + "&count=" + count + "&oldest=" + beginDate);
+		for (String p : projects) {
+
+			list.add(getData(p, severities));
+
+		}
+
+		return list;
+	}
+
+	private SonarQubeMessageVO getData(String projectName, String severities) throws Exception {
+		StringBuilder sUrl = new StringBuilder();
+		sUrl.append(JSON_URL);
+		sUrl.append(PROJECT_KEYS);
+		sUrl.append("=");
+		sUrl.append(projectName);
+		sUrl.append("&");
+		sUrl.append(SEVERITIES);
+		sUrl.append("=");
+		sUrl.append(severities);
+		sUrl.append("&ps=1");
+
+		URL url = new URL(sUrl.toString());
 
 		BufferedReader b = new BufferedReader(new InputStreamReader(url.openStream()));
 
@@ -44,30 +68,15 @@ public class SonarQubeMessagesDataSet {
 
 		JSONObject jres = new JSONObject(json.toString());
 
-		JSONArray jo = jres.getJSONArray("messages");
+		SonarQubeMessageVO vo = new SonarQubeMessageVO(projectName, jres.getInt("total"));
 
-		jo.forEach(action -> {
-			String user = ((JSONObject) action).optString("user", null);
-			String type = ((JSONObject) action).getString("type");
-			String text = ((JSONObject) action).getString("text");
-
-			long ts = (((JSONObject) action).getBigDecimal("ts")).longValue() * 1000L;
-
-			Timestamp date = new Timestamp(ts);
-
-			SonarQubeMessageVO vo = new SonarQubeMessageVO(type, user, text, date);
-
-			list.add(vo);
-		});
-
-		return list;
+		return vo;
 	}
 
 	// The following method will be called by BIRT engine once when
 	// the report is invoked. It is also a mandatory method.
 	public void open(Object appContext, Map<String, Object> map) throws Exception {
-		iterator = this.getMessages(String.valueOf(map.get("token")), String.valueOf(map.get("channel")),
-				Integer.valueOf(String.valueOf(map.get("count"))), Long.valueOf(String.valueOf(map.get("days"))))
+		iterator = this.getMessages(String.valueOf(map.get("projectName")), String.valueOf(map.get("severities")))
 				.iterator();
 	}
 
@@ -84,5 +93,17 @@ public class SonarQubeMessagesDataSet {
 	// called by the BIRT engine once at the end of the report.
 	public void close() {
 
+	}
+
+	public static void main(String[] args) throws Exception {
+		SonarQubeMessagesDataSet sq = new SonarQubeMessagesDataSet();
+
+		List<SonarQubeMessageVO> list = sq.getMessages(
+				"com.buscapecompany.api.offers:offer-commons,com.buscapecompany.api.offers:api-debugging,com.buscapecompany.api.offers:api-commons",
+				"CRITICAL,BLOCKER");
+
+		for (SonarQubeMessageVO vo : list) {
+			System.out.println(vo.toString());
+		}
 	}
 }
